@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_acme_incoming_inspection_user,acme.incoming.inspection user,model_acme_incoming_inspection,base.group_user,1,1,1,1
+access_acme_test_result_user,acme.test.result user,model_acme_test_result,base.group_user,1,1,1,1
+access_acme_rework_event_user,acme.rework.event user,model_acme_rework_event,base.group_user,1,1,1,1

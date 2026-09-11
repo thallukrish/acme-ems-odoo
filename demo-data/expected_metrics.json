@@ -1,0 +1,14 @@
+{
+  "scenario": "industrial-controller-pcb",
+  "primary_scaling_constraint": "Functional Test Station",
+  "primary_constraint_actual_units_per_day": 342,
+  "primary_constraint_queue_units": 1180,
+  "secondary_scaling_constraint": "High Performance MCU shortage",
+  "secondary_shortage_units": 710,
+  "single_source_mpn": "STM32H743VIT6",
+  "quality_failure_lot": "ETH-LOT-2608-Q7",
+  "quality_rejected_units": 74,
+  "rework_reason": "AOI-BRIDGE",
+  "rework_quantity": 96,
+  "scrap_quantity": 18
+}

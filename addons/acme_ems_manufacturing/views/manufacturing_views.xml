@@ -1,0 +1,10 @@
+<odoo>
+  <record id="view_acme_bom_revision_list" model="ir.ui.view">
+    <field name="name">acme.bom.revision.list</field><field name="model">acme.bom.revision</field>
+    <field name="arch" type="xml"><list><field name="product_tmpl_id"/><field name="revision_code"/><field name="state"/><field name="effective_from"/><field name="effective_to"/></list></field>
+  </record>
+  <record id="action_acme_bom_revision" model="ir.actions.act_window">
+    <field name="name">BOM Revisions</field><field name="res_model">acme.bom.revision</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_acme_bom_revision" name="BOM Revisions" parent="acme_ems_core.menu_acme_ems_root" action="action_acme_bom_revision" sequence="30"/>
+</odoo>

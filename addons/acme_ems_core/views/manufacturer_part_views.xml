@@ -1,0 +1,34 @@
+<odoo>
+  <record id="view_acme_manufacturer_part_list" model="ir.ui.view">
+    <field name="name">acme.manufacturer.part.list</field>
+    <field name="model">acme.manufacturer.part</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="manufacturer_name"/>
+        <field name="mpn"/>
+        <field name="product_tmpl_id"/>
+        <field name="package"/>
+        <field name="lifecycle_state"/>
+        <field name="is_preferred"/>
+      </list>
+    </field>
+  </record>
+  <record id="view_acme_manufacturer_part_form" model="ir.ui.view">
+    <field name="name">acme.manufacturer.part.form</field>
+    <field name="model">acme.manufacturer.part</field>
+    <field name="arch" type="xml">
+      <form string="Manufacturer Part">
+        <sheet><group>
+          <field name="name"/><field name="manufacturer_name"/><field name="mpn"/>
+          <field name="product_tmpl_id"/><field name="package"/><field name="lifecycle_state"/>
+          <field name="is_preferred"/><field name="notes"/>
+        </group></sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_acme_manufacturer_part" model="ir.actions.act_window">
+    <field name="name">Manufacturer Parts</field><field name="res_model">acme.manufacturer.part</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_acme_ems_root" name="ACME EMS" sequence="90"/>
+  <menuitem id="menu_acme_ems_parts" name="Manufacturer Parts" parent="menu_acme_ems_root" action="action_acme_manufacturer_part"/>
+</odoo>

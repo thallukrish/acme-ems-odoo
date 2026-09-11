@@ -1,0 +1,15 @@
+<odoo>
+  <record id="view_acme_approved_supply_list" model="ir.ui.view">
+    <field name="name">acme.approved.supply.list</field><field name="model">acme.approved.supply</field>
+    <field name="arch" type="xml"><list>
+      <field name="manufacturer_part_id"/><field name="supplier_id"/><field name="supplier_part_number"/>
+      <field name="approval_state"/><field name="is_preferred"/><field name="moq"/><field name="lead_time_days"/>
+      <field name="unit_price"/><field name="freight_cost_per_unit"/><field name="expedite_premium_per_unit"/>
+      <field name="on_time_delivery_pct"/><field name="quality_acceptance_pct"/>
+    </list></field>
+  </record>
+  <record id="action_acme_approved_supply" model="ir.actions.act_window">
+    <field name="name">Approved Supply Sources</field><field name="res_model">acme.approved.supply</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_acme_approved_supply" name="Approved Supply" parent="acme_ems_core.menu_acme_ems_root" action="action_acme_approved_supply" sequence="20"/>
+</odoo>

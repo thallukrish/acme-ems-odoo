@@ -1,0 +1,12 @@
+<odoo>
+  <record id="view_acme_lot_trace_list" model="ir.ui.view">
+    <field name="name">acme.lot.trace.list</field><field name="model">acme.lot.trace</field>
+    <field name="arch" type="xml"><list>
+      <field name="production_id"/><field name="component_product_id"/><field name="component_lot_id"/>
+      <field name="component_supplier_id"/><field name="finished_product_id"/><field name="finished_lot_id"/>
+      <field name="customer_order_ref"/><field name="shipment_ref"/>
+    </list></field>
+  </record>
+  <record id="action_acme_lot_trace" model="ir.actions.act_window"><field name="name">Lot Traceability</field><field name="res_model">acme.lot.trace</field><field name="view_mode">list,form</field></record>
+  <menuitem id="menu_acme_traceability" name="Lot Traceability" parent="acme_ems_core.menu_acme_ems_root" action="action_acme_lot_trace" sequence="50"/>
+</odoo>

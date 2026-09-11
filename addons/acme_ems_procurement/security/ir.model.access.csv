@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_acme_approved_supply_user,acme.approved.supply user,model_acme_approved_supply,base.group_user,1,1,1,1

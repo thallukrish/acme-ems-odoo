@@ -1,0 +1,9 @@
+<odoo>
+  <record id="action_acme_incoming_inspection" model="ir.actions.act_window"><field name="name">Incoming Inspections</field><field name="res_model">acme.incoming.inspection</field><field name="view_mode">list,form</field></record>
+  <record id="action_acme_test_result" model="ir.actions.act_window"><field name="name">Test Results</field><field name="res_model">acme.test.result</field><field name="view_mode">list,form</field></record>
+  <record id="action_acme_rework_event" model="ir.actions.act_window"><field name="name">Rework &amp; Scrap</field><field name="res_model">acme.rework.event</field><field name="view_mode">list,form</field></record>
+  <menuitem id="menu_acme_quality" name="Quality" parent="acme_ems_core.menu_acme_ems_root" sequence="40"/>
+  <menuitem id="menu_acme_incoming" name="Incoming Inspection" parent="menu_acme_quality" action="action_acme_incoming_inspection"/>
+  <menuitem id="menu_acme_tests" name="Functional Tests" parent="menu_acme_quality" action="action_acme_test_result"/>
+  <menuitem id="menu_acme_rework" name="Rework / Scrap" parent="menu_acme_quality" action="action_acme_rework_event"/>
+</odoo>
