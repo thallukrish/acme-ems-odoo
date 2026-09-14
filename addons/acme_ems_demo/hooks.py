@@ -39,18 +39,26 @@ def _mfr(env, product, manufacturer, mpn, package='', preferred=False):
 
 
 def _offer(env, mfr, supplier, spn, price, lead, reliability, quality, preferred=False, freight=0, expedite=0, moq=1):
+    # Standard Odoo owns vendor/product/price/MOQ/lead-time semantics.
+    supplierinfo = env['product.supplierinfo'].create({
+        'partner_id': supplier.id,
+        'product_tmpl_id': mfr.product_tmpl_id.id,
+        'product_id': mfr.product_tmpl_id.product_variant_id.id,
+        'product_code': spn,
+        'min_qty': moq,
+        'price': price,
+        'delay': lead,
+        'currency_id': env.company.currency_id.id,
+    })
+    # ACME stores only the EMS qualification/commercial semantics missing from Odoo.
     return env['acme.approved.supply'].create({
         'manufacturer_part_id': mfr.id,
-        'supplier_id': supplier.id,
-        'supplier_part_number': spn,
-        'unit_price': price,
-        'lead_time_days': lead,
-        'on_time_delivery_pct': reliability,
+        'supplierinfo_id': supplierinfo.id,
+        'approval_state': 'approved',
         'quality_acceptance_pct': quality,
         'is_preferred': preferred,
         'freight_cost_per_unit': freight,
         'expedite_premium_per_unit': expedite,
-        'moq': moq,
     })
 
 
@@ -86,9 +94,8 @@ def post_init_hook(env):
     r_yageo = _mfr(env, resistor, 'Yageo', 'RC0603FR-0710KL', '0603', True)
     r_vishay = _mfr(env, resistor, 'Vishay', 'CRCW060310K0FKEA', '0603')
 
-    # Single-source MCU is the material scaling constraint.
+    # Supplier offers live in standard Odoo supplierinfo; ACME adds qualification semantics.
     _offer(env, mcu_st, fastchip, 'FC-STM32H743', 1750, 45, 91, 99.4, True, freight=18, expedite=140, moq=90)
-    # Ethernet has an expensive fast source and a cheaper slower source.
     _offer(env, eth_ti, fastchip, 'FC-DP83867', 455, 12, 97, 99.6, True, freight=9, expedite=22, moq=50)
     _offer(env, eth_micro, economy, 'EC-KSZ9031', 382, 35, 78, 98.7, False, freight=6, expedite=65, moq=200)
     _offer(env, r_yageo, passives, 'BP-R10K-Y', 0.24, 8, 98, 99.9, True, moq=5000)
@@ -116,7 +123,7 @@ def post_init_hook(env):
         ],
     })
 
-    # Capacity: test is intentionally the primary bottleneck.
+    # Capacity data remains explicit operational evidence on work centers.
     smt = env['mrp.workcenter'].create({'name': 'SMT Line 1', 'ems_process_type': 'smt', 'ems_planned_units_per_day': 650, 'ems_actual_units_per_day': 590, 'ems_queue_units': 280, 'ems_downtime_hours_month': 9})
     assembly = env['mrp.workcenter'].create({'name': 'Assembly / THT', 'ems_process_type': 'assembly', 'ems_planned_units_per_day': 560, 'ems_actual_units_per_day': 525, 'ems_queue_units': 240, 'ems_downtime_hours_month': 5})
     aoi = env['mrp.workcenter'].create({'name': 'AOI Inspection', 'ems_process_type': 'aoi', 'ems_planned_units_per_day': 540, 'ems_actual_units_per_day': 500, 'ems_queue_units': 310, 'ems_downtime_hours_month': 7})
@@ -129,23 +136,38 @@ def post_init_hook(env):
     ]:
         env['mrp.routing.workcenter'].create({'name': name, 'workcenter_id': wc.id, 'bom_id': bom.id, 'time_cycle': minutes})
 
-    # Customer orders create demand context.
-    so1 = env['sale.order'].create({'partner_id': apex.id, 'client_order_ref': 'APX-PO-26091', 'order_line': [Command.create({'product_id': controller.id, 'product_uom_qty': 5000, 'price_unit': 9050})]})
+    # Customer demand uses standard Odoo commitment dates.
+    so1 = env['sale.order'].create({
+        'partner_id': apex.id,
+        'client_order_ref': 'APX-PO-26091',
+        'commitment_date': date.today() + timedelta(days=28),
+        'order_line': [Command.create({'product_id': controller.id, 'product_uom_qty': 5000, 'price_unit': 9050})],
+    })
     so1.action_confirm()
-    so2 = env['sale.order'].create({'partner_id': zenith.id, 'client_order_ref': 'ZEN-PO-7712', 'order_line': [Command.create({'product_id': controller.id, 'product_uom_qty': 3000, 'price_unit': 9350})]})
+    so2 = env['sale.order'].create({
+        'partner_id': zenith.id,
+        'client_order_ref': 'ZEN-PO-7712',
+        'commitment_date': date.today() + timedelta(days=21),
+        'order_line': [Command.create({'product_id': controller.id, 'product_uom_qty': 3000, 'price_unit': 9350})],
+    })
     so2.action_confirm()
 
-    # Explicit production records highlight the two constraints deterministically.
+    # Production records contain operational facts only. Shortage, delay and blocking cause are derived.
     mo_shortage = env['mrp.production'].create({
-        'product_id': controller.id, 'product_qty': 2200, 'bom_id': bom.id,
-        'ems_revision_id': rev.id, 'ems_blocking_component_id': mcu.id, 'ems_shortage_qty': 710,
-        'ems_delay_reason': 'component_shortage', 'ems_customer_order_ref': so1.name,
-        'ems_estimated_delay_days': 18, 'ems_planned_ship_date': date.today() + timedelta(days=28),
+        'product_id': controller.id,
+        'product_qty': 2200,
+        'bom_id': bom.id,
+        'ems_revision_id': rev.id,
+        'sale_line_id': so1.order_line[0].id,
+        'date_deadline': so1.commitment_date,
     })
     mo_capacity = env['mrp.production'].create({
-        'product_id': controller.id, 'product_qty': 1800, 'bom_id': bom.id,
-        'ems_revision_id': rev.id, 'ems_delay_reason': 'capacity', 'ems_customer_order_ref': so2.name,
-        'ems_estimated_delay_days': 11, 'ems_planned_ship_date': date.today() + timedelta(days=21),
+        'product_id': controller.id,
+        'product_qty': 1800,
+        'bom_id': bom.id,
+        'ems_revision_id': rev.id,
+        'sale_line_id': so2.order_line[0].id,
+        'date_deadline': so2.commitment_date,
     })
 
     # Lots and quality data. One incoming Ethernet lot fails inspection.
@@ -158,22 +180,18 @@ def post_init_hook(env):
         'notes': 'Oxidation observed on exposed leads; lot quarantined.'
     })
 
-    # Product B exists as a high-cost/rework contrast for business queries.
+    # Rework is an ACME-specific classified event. Standard Odoo owns scrap.
     env['acme.rework.event'].create({
-        'name': 'RW-CTRL-001', 'production_id': mo_capacity.id, 'event_type': 'rework', 'reason_code': 'AOI-BRIDGE',
+        'name': 'RW-CTRL-001', 'production_id': mo_capacity.id, 'reason_code': 'AOI-BRIDGE',
         'quantity': 96, 'labor_hours': 23.5, 'labor_cost': 28200, 'material_cost': 11600, 'external_cost': 0,
         'notes': 'Recurring solder bridge on fine-pitch MCU pins.'
-    })
-    env['acme.rework.event'].create({
-        'name': 'SC-CTRL-001', 'production_id': mo_capacity.id, 'event_type': 'scrap', 'reason_code': 'PCB-PAD-LIFT',
-        'quantity': 18, 'labor_hours': 3.0, 'labor_cost': 3600, 'material_cost': 62800,
     })
     env['acme.test.result'].create({
         'name': 'FT-CTRL-001', 'production_id': mo_capacity.id, 'finished_lot_id': lot_finished.id,
         'workcenter_id': test_wc.id, 'result': 'fail', 'failure_code': 'ETH-LINK', 'cycle_minutes': 9.4,
     })
 
-    # Explicit trace path for reverse impact analysis.
+    # Explicit trace path retained pending a dedicated standard-Odoo traceability redundancy audit.
     env['acme.lot.trace'].create({
         'production_id': mo_capacity.id, 'component_product_id': mcu.id, 'component_lot_id': lot_mcu.id,
         'component_supplier_id': fastchip.id, 'consumed_qty': 1080,
