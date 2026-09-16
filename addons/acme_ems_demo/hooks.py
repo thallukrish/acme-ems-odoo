@@ -80,6 +80,15 @@ def post_init_hook(env):
     pcb = _product(env, 'Controller Bare PCB Rev C', 'PCB-CTRL-C', 510, source='mixed')
     connector = _product(env, '12-way Industrial Connector', 'CON-12W', 210)
 
+    # The finished controller is replenished specifically for each sales order
+    # and fulfilled by manufacturing. This makes SO -> procurement -> MO a real
+    # Odoo workflow rather than a synthetic demo relationship.
+    mto_route = env.ref('stock.route_warehouse0_mto')
+    manufacture_route = env.ref('mrp.route_warehouse0_manufacture')
+    mto_route.active = True
+    manufacture_route.product_selectable = True
+    controller.product_tmpl_id.route_ids = [Command.set((mto_route | manufacture_route).ids)]
+
     mcu_st = _mfr(env, mcu, 'STMicroelectronics', 'STM32H743VIT6', 'LQFP100', True)
     eth_ti = _mfr(env, ethernet, 'Texas Instruments', 'DP83867IRPAP', 'HTQFP64', True)
     eth_micro = _mfr(env, ethernet, 'Microchip', 'KSZ9031RNX', 'QFN48')
@@ -129,21 +138,33 @@ def post_init_hook(env):
     ]:
         env['mrp.routing.workcenter'].create({'name': name, 'workcenter_id': wc.id, 'bom_id': bom.id, 'time_cycle': minutes})
 
-    # Customer orders create demand context.
+    # Customer orders create demand. Because the finished product uses MTO +
+    # Manufacture, confirming each SO creates its corresponding MO through
+    # standard Odoo procurement rules.
     so1 = env['sale.order'].create({'partner_id': apex.id, 'client_order_ref': 'APX-PO-26091', 'order_line': [Command.create({'product_id': controller.id, 'product_uom_qty': 5000, 'price_unit': 9050})]})
     so1.action_confirm()
     so2 = env['sale.order'].create({'partner_id': zenith.id, 'client_order_ref': 'ZEN-PO-7712', 'order_line': [Command.create({'product_id': controller.id, 'product_uom_qty': 3000, 'price_unit': 9350})]})
     so2.action_confirm()
 
-    # Explicit production records highlight the two constraints deterministically.
-    mo_shortage = env['mrp.production'].create({
-        'product_id': controller.id, 'product_qty': 2200, 'bom_id': bom.id,
+    # Enrich the MOs created by the real sale -> procurement -> manufacture
+    # workflow with deterministic EMS constraints used by the demo queries.
+    mo_shortage = env['mrp.production'].search([
+        ('sale_line_id', 'in', so1.order_line.ids),
+        ('product_id', '=', controller.id),
+    ], order='id desc', limit=1)
+    mo_capacity = env['mrp.production'].search([
+        ('sale_line_id', 'in', so2.order_line.ids),
+        ('product_id', '=', controller.id),
+    ], order='id desc', limit=1)
+    if not mo_shortage or not mo_capacity:
+        raise RuntimeError('ACME demo expected sales-order confirmation to create manufacturing orders')
+
+    mo_shortage.write({
         'ems_revision_id': rev.id, 'ems_blocking_component_id': mcu.id, 'ems_shortage_qty': 710,
         'ems_delay_reason': 'component_shortage', 'ems_customer_order_ref': so1.name,
         'ems_estimated_delay_days': 18, 'ems_planned_ship_date': date.today() + timedelta(days=28),
     })
-    mo_capacity = env['mrp.production'].create({
-        'product_id': controller.id, 'product_qty': 1800, 'bom_id': bom.id,
+    mo_capacity.write({
         'ems_revision_id': rev.id, 'ems_delay_reason': 'capacity', 'ems_customer_order_ref': so2.name,
         'ems_estimated_delay_days': 11, 'ems_planned_ship_date': date.today() + timedelta(days=21),
     })
