@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_acme_manufacturer_part_user,acme.manufacturer.part user,model_acme_manufacturer_part,base.group_user,1,1,1,1
+access_acme_product_cost_snapshot_user,acme.product.cost.snapshot user,model_acme_product_cost_snapshot,base.group_user,1,1,1,1
