@@ -25,13 +25,13 @@ def extend_demo_scenario(env):
         'package': 'MAPBGA289',
         'product_tmpl_id': mcu.product_tmpl_id.id,
         'is_preferred': False,
-        'notes': 'Approved functional alternate for the controller MCU requirement.',
+        'notes': 'Functionally compatible alternate pending full sourcing qualification.',
     })
     env['acme.approved.supply'].create({
         'manufacturer_part_id': alternate_mcu.id,
         'supplier_id': alternate_supplier.id,
         'supplier_part_number': 'AS-NXP-RT1176',
-        'approval_state': 'approved',
+        'approval_state': 'conditional',
         'is_preferred': False,
         'moq': 500,
         'lead_time_days': 28,
