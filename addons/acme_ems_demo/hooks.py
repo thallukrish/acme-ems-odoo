@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 from odoo import Command
 
+from .scenario_extension import extend_demo_scenario
+
 
 def _partner(env, name, supplier=False, customer=False):
     vals = {'name': name, 'company_type': 'company'}
@@ -204,3 +206,8 @@ def post_init_hook(env):
 
     # Make the second product visible without adding a full second BOM in V1.
     gateway.product_tmpl_id.ems_material_source = 'mixed'
+
+    # Add generic cross-functional facts used by the supplier-switch and cost
+    # analysis demonstrations. The extension stores source data only; no query
+    # answer or recommendation is precomputed.
+    extend_demo_scenario(env)
