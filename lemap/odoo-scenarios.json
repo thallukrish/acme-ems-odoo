@@ -2,7 +2,7 @@
   "enterpriseId": "acme-ems",
   "scenarios": [
     {
-      "id": "sale-to-manufacturing",
+      "id": "demand-to-production-capacity",
       "actor": "sales_user",
       "start": {
         "model": "sale.order",
@@ -11,12 +11,24 @@
       "fixtures": {
         "customer_apex": {
           "model": "res.partner",
-          "domain": [["name", "=", "Apex Industrial Controls Pvt Ltd"]],
+          "domain": [
+            [
+              "name",
+              "=",
+              "Apex Industrial Controls Pvt Ltd"
+            ]
+          ],
           "field": "id"
         },
         "controller": {
           "model": "product.product",
-          "domain": [["default_code", "=", "FG-CTRL-100"]],
+          "domain": [
+            [
+              "default_code",
+              "=",
+              "FG-CTRL-100"
+            ]
+          ],
           "field": "id"
         }
       },
@@ -27,27 +39,448 @@
         },
         {
           "type": "create",
+          "saveAs": "runtime_sale_order_id",
           "values": {
-            "partner_id": {"$ref": "customer_apex"},
+            "partner_id": {
+              "$ref": "customer_apex"
+            },
             "client_order_ref": "LEMAP-RUNTIME-SO-001",
             "order_line": [
-              [0, 0, {
-                "product_id": {"$ref": "controller"},
-                "product_uom_qty": 25,
-                "price_unit": 9050
-              }]
+              [
+                0,
+                0,
+                {
+                  "product_id": {
+                    "$ref": "controller"
+                  },
+                  "product_uom_qty": 25,
+                  "price_unit": 9050
+                }
+              ]
             ]
           }
         },
         {
           "type": "click",
           "label": "Confirm"
+        },
+        {
+          "type": "find",
+          "model": "sale.order.line",
+          "domain": [
+            [
+              "order_id",
+              "=",
+              {
+                "$saved": "runtime_sale_order_id"
+              }
+            ]
+          ],
+          "saveAs": "runtime_sale_line_ids",
+          "many": true,
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "mrp.production",
+          "domain": [
+            [
+              "sale_line_id",
+              "in",
+              {
+                "$saved": "runtime_sale_line_ids"
+              }
+            ]
+          ],
+          "fields": [
+            "bom_id",
+            "workorder_ids",
+            "ems_blocking_component_id",
+            "ems_shortage_qty"
+          ],
+          "saveAs": "runtime_mo_ids",
+          "many": true,
+          "require": true
+        },
+        {
+          "type": "read",
+          "fields": [
+            "bom_id"
+          ],
+          "saveAs": "runtime_bom_ids",
+          "field": "bom_id",
+          "many": true
+        },
+        {
+          "type": "find",
+          "model": "mrp.workorder",
+          "domain": [
+            [
+              "production_id",
+              "in",
+              {
+                "$saved": "runtime_mo_ids"
+              }
+            ]
+          ],
+          "fields": [
+            "workcenter_id",
+            "state"
+          ],
+          "saveAs": "runtime_workorder_ids",
+          "many": true,
+          "require": false
+        },
+        {
+          "type": "read",
+          "fields": [
+            "workcenter_id"
+          ],
+          "saveAs": "runtime_workcenter_ids",
+          "field": "workcenter_id",
+          "many": true
+        },
+        {
+          "type": "find",
+          "model": "mrp.workcenter",
+          "domain": [
+            [
+              "id",
+              "in",
+              {
+                "$saved": "runtime_workcenter_ids"
+              }
+            ]
+          ],
+          "fields": [
+            "ems_actual_units_per_day",
+            "ems_queue_units",
+            "ems_downtime_hours_month"
+          ],
+          "require": false
+        },
+        {
+          "type": "find",
+          "model": "acme.rework.event",
+          "domain": [
+            [
+              "production_id",
+              "in",
+              {
+                "$saved": "runtime_mo_ids"
+              }
+            ]
+          ],
+          "require": false
+        },
+        {
+          "type": "find",
+          "model": "acme.test.result",
+          "domain": [
+            [
+              "production_id",
+              "in",
+              {
+                "$saved": "runtime_mo_ids"
+              }
+            ]
+          ],
+          "require": false
         }
       ],
       "expectedBusinessOutcome": [
         "sale confirmed",
-        "procurement launched",
-        "manufacturing order created"
+        "manufacturing order created from the runtime sale",
+        "BOM and work-center neighborhood reached",
+        "capacity and production-quality evidence queried"
+      ]
+    },
+    {
+      "id": "production-quality-cost",
+      "actor": "operations_user",
+      "start": {
+        "model": "mrp.production",
+        "view": "form"
+      },
+      "fixtures": {
+        "capacity_mo": {
+          "model": "mrp.production",
+          "domain": [
+            [
+              "ems_delay_reason",
+              "=",
+              "capacity"
+            ]
+          ],
+          "field": "id"
+        },
+        "controller": {
+          "model": "product.product",
+          "domain": [
+            [
+              "default_code",
+              "=",
+              "FG-CTRL-100"
+            ]
+          ],
+          "field": "id"
+        }
+      },
+      "actions": [
+        {
+          "type": "open",
+          "model": "mrp.production"
+        },
+        {
+          "type": "find",
+          "model": "mrp.production",
+          "domain": [
+            [
+              "id",
+              "=",
+              {
+                "$ref": "capacity_mo"
+              }
+            ]
+          ],
+          "fields": [
+            "product_id",
+            "bom_id",
+            "workorder_ids"
+          ],
+          "saveAs": "capacity_mo_id",
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "acme.rework.event",
+          "domain": [
+            [
+              "production_id",
+              "=",
+              {
+                "$saved": "capacity_mo_id"
+              }
+            ]
+          ],
+          "fields": [
+            "event_type",
+            "quantity",
+            "labor_cost",
+            "material_cost",
+            "external_cost"
+          ],
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "acme.test.result",
+          "domain": [
+            [
+              "production_id",
+              "=",
+              {
+                "$saved": "capacity_mo_id"
+              }
+            ]
+          ],
+          "fields": [
+            "result",
+            "failure_code",
+            "cycle_minutes",
+            "workcenter_id"
+          ],
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "acme.lot.trace",
+          "domain": [
+            [
+              "production_id",
+              "=",
+              {
+                "$saved": "capacity_mo_id"
+              }
+            ]
+          ],
+          "fields": [
+            "component_product_id",
+            "component_supplier_id",
+            "finished_product_id",
+            "finished_lot_id"
+          ],
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "acme.product.cost.snapshot",
+          "domain": [
+            [
+              "product_id",
+              "=",
+              {
+                "$ref": "controller"
+              }
+            ]
+          ],
+          "fields": [
+            "period_date",
+            "material_unit_cost",
+            "conversion_unit_cost",
+            "rework_scrap_unit_cost",
+            "freight_expedite_unit_cost"
+          ],
+          "require": true
+        }
+      ],
+      "expectedBusinessOutcome": [
+        "production order revisited",
+        "rework and scrap evidence reached",
+        "functional-test evidence reached",
+        "lot traceability reached",
+        "historical cost snapshots reached"
+      ]
+    },
+    {
+      "id": "bom-to-sourcing",
+      "actor": "procurement_user",
+      "start": {
+        "model": "mrp.bom",
+        "view": "form"
+      },
+      "fixtures": {
+        "controller_template": {
+          "model": "product.template",
+          "domain": [
+            [
+              "default_code",
+              "=",
+              "FG-CTRL-100"
+            ]
+          ],
+          "field": "id"
+        },
+        "mcu_template": {
+          "model": "product.template",
+          "domain": [
+            [
+              "default_code",
+              "=",
+              "IC-MCU-H7"
+            ]
+          ],
+          "field": "id"
+        }
+      },
+      "actions": [
+        {
+          "type": "open",
+          "model": "mrp.bom"
+        },
+        {
+          "type": "find",
+          "model": "mrp.bom",
+          "domain": [
+            [
+              "product_tmpl_id",
+              "=",
+              {
+                "$ref": "controller_template"
+              }
+            ]
+          ],
+          "fields": [
+            "bom_line_ids",
+            "operation_ids"
+          ],
+          "saveAs": "controller_bom_ids",
+          "many": true,
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "mrp.bom.line",
+          "domain": [
+            [
+              "bom_id",
+              "in",
+              {
+                "$saved": "controller_bom_ids"
+              }
+            ]
+          ],
+          "fields": [
+            "product_id",
+            "product_qty"
+          ],
+          "saveAs": "bom_line_ids",
+          "many": true,
+          "require": true
+        },
+        {
+          "type": "read",
+          "fields": [
+            "product_id"
+          ],
+          "saveAs": "bom_component_product_ids",
+          "field": "product_id",
+          "many": true
+        },
+        {
+          "type": "find",
+          "model": "acme.manufacturer.part",
+          "domain": [
+            [
+              "product_tmpl_id",
+              "=",
+              {
+                "$ref": "mcu_template"
+              }
+            ]
+          ],
+          "fields": [
+            "manufacturer_name",
+            "mpn",
+            "is_preferred",
+            "lifecycle_state"
+          ],
+          "saveAs": "mcu_manufacturer_part_ids",
+          "many": true,
+          "require": true
+        },
+        {
+          "type": "find",
+          "model": "acme.approved.supply",
+          "domain": [
+            [
+              "manufacturer_part_id",
+              "in",
+              {
+                "$saved": "mcu_manufacturer_part_ids"
+              }
+            ]
+          ],
+          "fields": [
+            "supplier_id",
+            "approval_state",
+            "is_preferred",
+            "moq",
+            "lead_time_days",
+            "unit_price",
+            "freight_cost_per_unit",
+            "expedite_premium_per_unit",
+            "on_time_delivery_pct",
+            "quality_acceptance_pct"
+          ],
+          "require": true
+        }
+      ],
+      "expectedBusinessOutcome": [
+        "finished-product BOM reached",
+        "component neighborhood reached",
+        "MCU manufacturer-part alternatives reached",
+        "approved supplier trade-offs reached"
       ]
     }
   ]
