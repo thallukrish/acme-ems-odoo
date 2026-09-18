@@ -1,0 +1,54 @@
+{
+  "enterpriseId": "acme-ems",
+  "scenarios": [
+    {
+      "id": "sale-to-manufacturing",
+      "actor": "sales_user",
+      "start": {
+        "model": "sale.order",
+        "view": "form"
+      },
+      "fixtures": {
+        "customer_apex": {
+          "model": "res.partner",
+          "domain": [["name", "=", "Apex Industrial Controls Pvt Ltd"]],
+          "field": "id"
+        },
+        "controller": {
+          "model": "product.product",
+          "domain": [["default_code", "=", "FG-CTRL-100"]],
+          "field": "id"
+        }
+      },
+      "actions": [
+        {
+          "type": "open",
+          "model": "sale.order"
+        },
+        {
+          "type": "create",
+          "values": {
+            "partner_id": {"$ref": "customer_apex"},
+            "client_order_ref": "LEMAP-RUNTIME-SO-001",
+            "order_line": [
+              [0, 0, {
+                "product_id": {"$ref": "controller"},
+                "product_uom_qty": 25,
+                "price_unit": 9050
+              }]
+            ]
+          }
+        },
+        {
+          "type": "click",
+          "label": "Confirm"
+        }
+      ],
+      "expectedBusinessOutcome": [
+        "sale confirmed",
+        "procurement launched",
+        "manufacturing order created"
+      ]
+    }
+  ]
+}
