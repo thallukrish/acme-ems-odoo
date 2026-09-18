@@ -103,6 +103,14 @@
           "require": true
         },
         {
+          "type": "open",
+          "model": "mrp.production",
+          "recordIds": {
+            "$saved": "runtime_mo_ids"
+          },
+          "view": "form"
+        },
+        {
           "type": "read",
           "fields": [
             "bom_id"
@@ -132,6 +140,14 @@
           "require": false
         },
         {
+          "type": "open",
+          "model": "mrp.workorder",
+          "recordIds": {
+            "$saved": "runtime_workorder_ids"
+          },
+          "view": "form"
+        },
+        {
           "type": "read",
           "fields": [
             "workcenter_id"
@@ -158,6 +174,14 @@
             "ems_downtime_hours_month"
           ],
           "require": false
+        },
+        {
+          "type": "open",
+          "model": "mrp.workcenter",
+          "recordIds": {
+            "$saved": "runtime_workcenter_ids"
+          },
+          "view": "form"
         },
         {
           "type": "find",
